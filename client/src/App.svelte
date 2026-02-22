@@ -1,47 +1,61 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
+  import TabNav from './components/TabNav.svelte';
+  import MovieGrid from './components/MovieGrid.svelte';
+  import TvSearch from './components/TvSearch.svelte';
+  import Player from './components/Player.svelte';
+  import { player } from './lib/playerStore.svelte.js';
+
+  let activeTab = $state('movies');
 </script>
 
-<main>
-  <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
+<div class="app">
+  <header>
+    <h1>home-movies</h1>
+    <TabNav active={activeTab} ontabchange={(tab) => (activeTab = tab)} />
+  </header>
 
-  <div class="card">
-    <Counter />
-  </div>
+  <main>
+    {#if activeTab === 'movies'}
+      <MovieGrid />
+    {:else}
+      <TvSearch />
+    {/if}
+  </main>
 
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
-
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
-</main>
+  {#if player.active}
+    <Player />
+  {/if}
+</div>
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
+  .app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
+
+  header {
+    padding: 0.75rem 2rem;
+    border-bottom: 1px solid #222;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    background: #0d0d0d;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
+
+  h1 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #ccc;
   }
-  .read-the-docs {
-    color: #888;
+
+  main {
+    flex: 1;
+    padding: 2rem;
   }
 </style>

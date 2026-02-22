@@ -21,56 +21,56 @@
 
 ## 4. TV Search API
 
-- [ ] 4.1 Implement `GET /api/tv` handler: query EZTV API with `q` param, fetch up to 100 results
-- [ ] 4.2 Parse each episode's filename/title for season and episode number (S##E## pattern); assign unknown season/episode when unparseable
-- [ ] 4.3 Group episodes by season server-side; within each season sort by episode number ascending; order seasons newest first
-- [ ] 4.4 Return grouped shape: `{ seasons: [{ season, episodes: [{ title, episode, magnet, seeds }] }] }`
-- [ ] 4.5 Handle EZTV API errors and return HTTP 502 with an error message
+- [x] 4.1 Implement `GET /api/tv` handler: query EZTV API with `q` param, fetch up to 100 results
+- [x] 4.2 Parse each episode's filename/title for season and episode number (S##E## pattern); assign unknown season/episode when unparseable
+- [x] 4.3 Group episodes by season server-side; within each season sort by episode number ascending; order seasons newest first
+- [x] 4.4 Return grouped shape: `{ seasons: [{ season, episodes: [{ title, episode, magnet, seeds }] }] }`
+- [x] 4.5 Handle EZTV API errors and return HTTP 502 with an error message
 
 ## 5. Streaming Engine
 
-- [ ] 5.1 Implement `POST /api/stream`: validate magnet link present, stop and clean up any existing active torrent, add new magnet to WebTorrent
-- [ ] 5.2 Wait for torrent metadata, then select the largest file by byte size as the stream target
-- [ ] 5.3 Return `{ streamUrl: "/stream/:infoHash/:fileIndex", infoHash }` once metadata is ready
-- [ ] 5.4 Implement `GET /stream/:infoHash/:fileIndex`: look up torrent and file, pipe file stream to response with correct Content-Type and Content-Length headers
-- [ ] 5.5 Handle HTTP range requests: parse `Range` header, respond with HTTP 206 and correct `Content-Range` header
-- [ ] 5.6 On `req.on('close')`: start a 30-second grace period timer before removing torrent and deleting temp files
-- [ ] 5.7 Cancel the cleanup timer if a new request for the same infoHash arrives within the grace period
-- [ ] 5.8 Implement inactivity timeout: if no bytes transferred for 10 minutes on an open connection, close it and begin grace period
+- [x] 5.1 Implement `POST /api/stream`: validate magnet link present, stop and clean up any existing active torrent, add new magnet to WebTorrent
+- [x] 5.2 Wait for torrent metadata, then select the largest file by byte size as the stream target
+- [x] 5.3 Return `{ streamUrl: "/stream/:infoHash/:fileIndex", infoHash }` once metadata is ready
+- [x] 5.4 Implement `GET /stream/:infoHash/:fileIndex`: look up torrent and file, pipe file stream to response with correct Content-Type and Content-Length headers
+- [x] 5.5 Handle HTTP range requests: parse `Range` header, respond with HTTP 206 and correct `Content-Range` header
+- [x] 5.6 On `req.on('close')`: start a 30-second grace period timer before removing torrent and deleting temp files
+- [x] 5.7 Cancel the cleanup timer if a new request for the same infoHash arrives within the grace period
+- [x] 5.8 Implement inactivity timeout: if no bytes transferred for 10 minutes on an open connection, close it and begin grace period
 
 ## 6. Client Shell & Navigation
 
-- [ ] 6.1 Create `App.svelte` with two-tab layout (Movies / TV) and a slot for the player overlay
-- [ ] 6.2 Create `TabNav.svelte` component: renders Movies and TV tabs, emits tab change events
-- [ ] 6.3 Create `SearchBar.svelte` component: text input + submit, emits search query string
-- [ ] 6.4 Implement global player state in a Svelte store: `{ active, streamUrl, title }`; player overlay shown when `active` is true
+- [x] 6.1 Create `App.svelte` with two-tab layout (Movies / TV) and a slot for the player overlay
+- [x] 6.2 Create `TabNav.svelte` component: renders Movies and TV tabs, emits tab change events
+- [x] 6.3 Create `SearchBar.svelte` component: text input + submit, emits search query string
+- [x] 6.4 Implement global player state in a Svelte store: `{ active, streamUrl, title }`; player overlay shown when `active` is true
 
 ## 7. Movies UI
 
-- [ ] 7.1 Create `MovieGrid.svelte`: on mount fetch `/api/movies` (popular), render grid of `MovieCard` components, handle loading and error states
-- [ ] 7.2 Wire `SearchBar` in movies tab: on submit fetch `/api/movies?q=...`, replace grid with search results
-- [ ] 7.3 Create `MovieCard.svelte`: display poster (with placeholder fallback), title, year, rating, and quality buttons (720p / 1080p / 4K) for available tiers
-- [ ] 7.4 On quality button click: POST magnet to `/api/stream`, set player store to active with returned stream URL
-- [ ] 7.5 Add "Load more" button: fetch next page and append cards to existing grid
+- [x] 7.1 Create `MovieGrid.svelte`: on mount fetch `/api/movies` (popular), render grid of `MovieCard` components, handle loading and error states
+- [x] 7.2 Wire `SearchBar` in movies tab: on submit fetch `/api/movies?q=...`, replace grid with search results
+- [x] 7.3 Create `MovieCard.svelte`: display poster (with placeholder fallback), title, year, rating, and quality buttons (720p / 1080p / 4K) for available tiers
+- [x] 7.4 On quality button click: POST magnet to `/api/stream`, set player store to active with returned stream URL
+- [x] 7.5 Add "Load more" button: fetch next page and append cards to existing grid
 
 ## 8. TV UI
 
-- [ ] 8.1 Create `TvSearch.svelte`: default state shows search prompt with no results; on search query fetch `/api/tv?q=...`
-- [ ] 8.2 Create `SeasonGroup.svelte`: collapsible section showing season label and list of episodes; latest season expanded by default
-- [ ] 8.3 Create `EpisodeRow.svelte`: displays episode number, title, and seed count; on click POST magnet to `/api/stream` and activate player
-- [ ] 8.4 Handle "Unknown" season group: render at the bottom below all numbered seasons
+- [x] 8.1 Create `TvSearch.svelte`: default state shows search prompt with no results; on search query fetch `/api/tv?q=...`
+- [x] 8.2 Create `SeasonGroup.svelte`: collapsible section showing season label and list of episodes; latest season expanded by default
+- [x] 8.3 Create `EpisodeRow.svelte`: displays episode number, title, and seed count; on click POST magnet to `/api/stream` and activate player
+- [x] 8.4 Handle "Unknown" season group: render at the bottom below all numbered seasons
 
 ## 9. Player UI
 
-- [ ] 9.1 Create `Player.svelte`: overlay component with a `<video>` element pointed at `streamUrl`, native browser controls enabled
-- [ ] 9.2 Show a loading/buffering indicator while the torrent metadata is being fetched (between POST and stream URL being available)
-- [ ] 9.3 Add a close/back button: clear player store state, return user to the previous tab and search results
-- [ ] 9.4 Display the title of the content being streamed above the video player
+- [x] 9.1 Create `Player.svelte`: overlay component with a `<video>` element pointed at `streamUrl`, native browser controls enabled
+- [x] 9.2 Show a loading/buffering indicator while the torrent metadata is being fetched (between POST and stream URL being available)
+- [x] 9.3 Add a close/back button: clear player store state, return user to the previous tab and search results
+- [x] 9.4 Display the title of the content being streamed above the video player
 
 ## 10. Polish & Error Handling
 
-- [ ] 10.1 Add empty state UI for movie search with no results ("No movies found for '...'")
-- [ ] 10.2 Add empty state UI for TV search with no results
-- [ ] 10.3 Show a user-facing error message when `/api/movies` or `/api/tv` returns an error
-- [ ] 10.4 Show a user-facing error message when `/api/stream` fails (e.g. bad magnet, WebTorrent error)
-- [ ] 10.5 Add a basic README with setup instructions (`npm install`, `npm run dev`, `npm start`)
+- [x] 10.1 Add empty state UI for movie search with no results ("No movies found for '...'")
+- [x] 10.2 Add empty state UI for TV search with no results
+- [x] 10.3 Show a user-facing error message when `/api/movies` or `/api/tv` returns an error
+- [x] 10.4 Show a user-facing error message when `/api/stream` fails (e.g. bad magnet, WebTorrent error)
+- [x] 10.5 Add a basic README with setup instructions (`npm install`, `npm run dev`, `npm start`)
