@@ -1,18 +1,7 @@
 <script lang="ts">
-  import { startStream } from '../lib/playerStore.svelte.js';
+  import { playNow, addToQueue } from '../lib/queue.svelte.js';
 
   let { movie }: { movie: { id: number; title: string; year: number; rating: number; poster: string | null; torrents: { quality: string; magnet: string }[] } } = $props();
-
-  let streamError = $state<string | null>(null);
-
-  async function handleQuality(magnet: string) {
-    streamError = null;
-    try {
-      await startStream(magnet, movie.title);
-    } catch {
-      streamError = 'Failed to start stream';
-    }
-  }
 </script>
 
 <article class="movie-card">
@@ -30,15 +19,21 @@
 
     <div class="qualities">
       {#each movie.torrents as torrent}
-        <button class="quality-btn" onclick={() => handleQuality(torrent.magnet)}>
-          {torrent.quality}
-        </button>
+        <div class="torrent-row">
+          <span class="quality-label">{torrent.quality}</span>
+          <button
+            class="action-btn play-btn"
+            onclick={() => playNow({ title: movie.title, magnet: torrent.magnet, quality: torrent.quality })}
+            title="Play now"
+          >▶</button>
+          <button
+            class="action-btn queue-btn"
+            onclick={() => addToQueue({ title: movie.title, magnet: torrent.magnet, quality: torrent.quality })}
+            title="Add to queue"
+          >+</button>
+        </div>
       {/each}
     </div>
-
-    {#if streamError}
-      <p class="stream-error">{streamError}</p>
-    {/if}
   </div>
 </article>
 
@@ -107,30 +102,44 @@
 
   .qualities {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    flex-direction: column;
+    gap: 0.3rem;
     margin-top: 0.4rem;
   }
 
-  .quality-btn {
-    padding: 0.25rem 0.6rem;
+  .torrent-row {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .quality-label {
     font-size: 0.75rem;
-    border: 1px solid #444;
+    color: #888;
+    min-width: 3rem;
+  }
+
+  .action-btn {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.75rem;
     border-radius: 3px;
     background: #222;
     color: #ccc;
+    border: 1px solid #444;
+    cursor: pointer;
     transition: all 0.15s;
+    line-height: 1;
   }
 
-  .quality-btn:hover {
+  .play-btn:hover {
     background: #fff;
     color: #111;
     border-color: #fff;
   }
 
-  .stream-error {
-    margin: 0.25rem 0 0;
-    font-size: 0.75rem;
-    color: #e55;
+  .queue-btn:hover {
+    background: #2a4a2a;
+    color: #8f8;
+    border-color: #4a7a4a;
   }
 </style>
