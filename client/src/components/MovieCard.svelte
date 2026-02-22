@@ -26,11 +26,11 @@
             onclick={() => playNow({ title: movie.title, magnet: torrent.magnet, quality: torrent.quality })}
             title="Play now"
           >▶</button>
-          <button
+          <!-- <button
             class="action-btn queue-btn"
             onclick={() => addToQueue({ title: movie.title, magnet: torrent.magnet, quality: torrent.quality })}
             title="Add to queue"
-          >+</button>
+          >+</button> -->
         </div>
       {/each}
     </div>
@@ -120,8 +120,8 @@
   }
 
   .action-btn {
-    padding: 0.25rem 0.55rem;
-    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
     border-radius: 3px;
     background: #222;
     color: #ccc;
@@ -129,6 +129,7 @@
     cursor: pointer;
     transition: all 0.15s;
     line-height: 1;
+    min-height: 36px;
   }
 
   .play-btn:hover {

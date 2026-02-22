@@ -7,40 +7,51 @@
 </script>
 
 <div class="episode-row">
-  <span class="ep-num">
-    {episode.episode !== null ? `E${String(episode.episode).padStart(2, '0')}` : '?'}
-  </span>
-  <span class="ep-title">{episode.title}</span>
-  <span class="ep-seeds" title="Seeds">{episode.seeds} seeds</span>
-  <div class="ep-actions">
-    <button
-      class="action-btn play-btn"
-      onclick={() => playNow({ title: episode.title, magnet: episode.magnet })}
-      title="Play now"
-      aria-label="Play now"
-    >▶</button>
-    <button
-      class="action-btn queue-btn"
-      onclick={() => addToQueue({ title: episode.title, magnet: episode.magnet })}
-      title="Add to queue"
-      aria-label="Add to queue"
-    >+</button>
-  </div>
+  <button
+    class="ep-main"
+    onclick={() => playNow({ title: episode.title, magnet: episode.magnet })}
+    aria-label="Play {episode.title}"
+  >
+    <span class="ep-num">
+      {episode.episode !== null ? `E${String(episode.episode).padStart(2, '0')}` : '?'}
+    </span>
+    <span class="ep-title">{episode.title}</span>
+    <span class="ep-seeds" title="Seeds">{episode.seeds} seeds</span>
+  </button>
+  <button
+    class="queue-btn"
+    onclick={() => addToQueue({ title: episode.title, magnet: episode.magnet })}
+    title="Add to queue"
+    aria-label="Add to queue"
+  >+</button>
 </div>
 
 <style>
   .episode-row {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    align-items: stretch;
     width: 100%;
-    padding: 0.4rem 0.75rem;
     color: #ddd;
     font-size: 0.875rem;
   }
 
   .episode-row:hover {
     background: #1a1a1a;
+  }
+
+  .ep-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.65rem 0.75rem;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: inherit;
+    text-align: left;
+    cursor: pointer;
   }
 
   .ep-num {
@@ -66,33 +77,24 @@
     flex-shrink: 0;
   }
 
-  .ep-actions {
-    display: flex;
-    gap: 0.25rem;
+  .queue-btn {
     flex-shrink: 0;
-  }
-
-  .action-btn {
-    padding: 0.2rem 0.45rem;
-    font-size: 0.7rem;
-    border-radius: 3px;
-    background: #222;
-    color: #ccc;
-    border: 1px solid #3a3a3a;
+    padding: 0 1rem;
+    background: transparent;
+    border: none;
+    border-left: 1px solid #2a2a2a;
+    color: #555;
+    font-size: 1rem;
     cursor: pointer;
     transition: all 0.15s;
-    line-height: 1;
-  }
-
-  .play-btn:hover {
-    background: #fff;
-    color: #111;
-    border-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
   }
 
   .queue-btn:hover {
-    background: #2a4a2a;
     color: #8f8;
-    border-color: #4a7a4a;
+    background: #1a2a1a;
   }
 </style>
