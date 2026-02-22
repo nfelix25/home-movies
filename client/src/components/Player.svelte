@@ -26,6 +26,7 @@
           src={player.streamUrl}
           controls
           autoplay
+          x-webkit-airplay="allow"
           class="video"
         ></video>
       {/if}

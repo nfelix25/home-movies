@@ -62,7 +62,16 @@ router.post('/api/stream', async (req, res) => {
     const torrent = await new Promise((resolve, reject) => {
       const t = client.add(magnet);
       t.once('metadata', () => resolve(t));
-      t.once('error', reject);
+      t.once('error', (err) => {
+        // If the torrent is already in the client (e.g. destroy is still in progress),
+        // look it up by the infoHash embedded in the error message and reuse it.
+        if (err.message && err.message.includes('duplicate torrent')) {
+          const match = err.message.match(/[a-f0-9]{40}/i);
+          const existing = match ? client.get(match[0]) : null;
+          if (existing) return resolve(existing);
+        }
+        reject(err);
+      });
     });
 
     // Auto-select the largest file (almost always the video)
