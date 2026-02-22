@@ -22,3 +22,27 @@ Starts the Express API server and the Vite dev server concurrently. Open http://
 npm run build   # compile the Svelte client to client/dist/
 npm start       # serve API + static files on http://localhost:3000
 ```
+
+## Running as a Service
+
+Runs the app persistently on port **8765**, auto-starting on login and auto-restarting when server code changes.
+
+**One-time setup:**
+
+```bash
+npm install -g pm2          # install PM2 globally
+npm run build               # build the client
+pm2 start ecosystem.config.cjs
+pm2 startup                 # prints a command — run it to register with macOS
+pm2 save                    # persist the process list across reboots
+```
+
+After setup, the app is available at http://localhost:8765 and survives reboots automatically.
+
+**Day-to-day:**
+
+```bash
+pm2 logs home-movies        # view server logs
+pm2 restart home-movies     # restart manually
+npm run build               # update the frontend (no restart needed)
+```
