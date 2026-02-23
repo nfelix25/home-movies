@@ -2,7 +2,7 @@
   import { dndzone } from 'svelte-dnd-action';
   import { queue, reorder, removeItem, jumpTo, type QueueItem } from '../lib/queue.svelte.js';
 
-  let { open }: { open: boolean } = $props();
+  let { open, onclose }: { open: boolean; onclose: () => void } = $props();
 
   // svelte-dnd-action needs its own copy of items during drag
   let dragItems = $state<QueueItem[]>([]);
@@ -24,6 +24,7 @@
   <div class="panel-header">
     <span class="panel-title">Up Next</span>
     <span class="panel-count">{queue.items.length} item{queue.items.length !== 1 ? 's' : ''}</span>
+    <button class="close-btn" onclick={onclose} aria-label="Close queue">✕</button>
   </div>
 
   {#if queue.items.length === 0}
@@ -90,6 +91,23 @@
   .panel-count {
     font-size: 0.75rem;
     color: #666;
+  }
+
+  .close-btn {
+    background: transparent;
+    border: none;
+    color: #555;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.25rem 0.35rem;
+    border-radius: 3px;
+    line-height: 1;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .close-btn:hover {
+    color: #ccc;
   }
 
   .empty {

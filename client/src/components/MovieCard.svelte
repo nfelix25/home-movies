@@ -26,11 +26,11 @@
             onclick={() => playNow({ title: movie.title, magnet: torrent.magnet, quality: torrent.quality })}
             title="Play now"
           >▶</button>
-          <!-- <button
+          <button
             class="action-btn queue-btn"
             onclick={() => addToQueue({ title: movie.title, magnet: torrent.magnet, quality: torrent.quality })}
             title="Add to queue"
-          >+</button> -->
+          >+</button>
         </div>
       {/each}
     </div>

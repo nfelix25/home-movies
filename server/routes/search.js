@@ -159,7 +159,7 @@ function mapMovie(movie) {
     rating: movie.rating,
     poster: movie.large_cover_image || movie.medium_cover_image || null,
     torrents: Array.isArray(movie.torrents)
-      ? movie.torrents.map((torrent) => ({
+      ? movie.torrents.filter(torrent => torrent.seeds > 1).map((torrent) => ({
           quality: torrent.quality,
           magnet: buildMagnetLink(torrent.hash, movie.title)
         }))

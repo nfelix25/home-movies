@@ -15,8 +15,12 @@ export const queue = $state({
 export function hasPrev() { return queue.currentIndex > 0; }
 export function hasNext() { return queue.currentIndex < queue.items.length - 1; }
 
+function uid() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 export function playNow(item: Omit<QueueItem, 'id'>) {
-  const newItem: QueueItem = { ...item, id: crypto.randomUUID() };
+  const newItem: QueueItem = { ...item, id: uid() };
   queue.items.splice(0, 0, newItem);
   queue.currentIndex = 0;
   startStream(newItem.magnet, newItem.title);
@@ -24,7 +28,7 @@ export function playNow(item: Omit<QueueItem, 'id'>) {
 
 export function addToQueue(item: Omit<QueueItem, 'id'>) {
   const wasEmpty = queue.items.length === 0;
-  const newItem: QueueItem = { ...item, id: crypto.randomUUID() };
+  const newItem: QueueItem = { ...item, id: uid() };
   queue.items.push(newItem);
   if (wasEmpty) {
     queue.currentIndex = 0;

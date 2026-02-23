@@ -82,7 +82,7 @@
       </div>
     </div>
 
-    <QueuePanel open={queueOpen} />
+    <QueuePanel open={queueOpen} onclose={() => queueOpen = false} />
   </div>
 </div>
 
