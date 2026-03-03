@@ -1,7 +1,46 @@
 <script lang="ts">
+  import { activateStream } from '../lib/playerStore.svelte.js';
   import { playNow, addToQueue } from '../lib/queue.svelte.js';
 
-  let { movie }: { movie: { id: number; title: string; year: number; rating: number; poster: string | null; torrents: { quality: string; magnet: string }[] } } = $props();
+  let {
+    movie,
+    libraryItem = null,
+  }: {
+    movie: {
+      id: number;
+      imdbId: string | null;
+      title: string;
+      year: number;
+      rating: number;
+      poster: string | null;
+      torrents: { quality: string; magnet: string }[];
+      inLibrary: boolean;
+    };
+    libraryItem?: { id: string; streamUrl: string } | null;
+  } = $props();
+
+  function buildMetadata(quality?: string) {
+    return {
+      type: 'movie',
+      title: movie.title,
+      year: movie.year,
+      imdbId: movie.imdbId,
+      poster: movie.poster,
+      quality,
+    };
+  }
+
+  function handlePlay(torrent: { quality: string; magnet: string }) {
+    if (movie.inLibrary && libraryItem) {
+      activateStream(libraryItem.streamUrl, movie.title);
+    } else {
+      playNow({ title: movie.title, magnet: torrent.magnet, metadata: buildMetadata(torrent.quality) });
+    }
+  }
+
+  function handleQueue(torrent: { quality: string; magnet: string }) {
+    addToQueue({ title: movie.title, magnet: torrent.magnet, metadata: buildMetadata(torrent.quality) });
+  }
 </script>
 
 <article class="movie-card">
@@ -10,6 +49,9 @@
       <img src={movie.poster} alt={movie.title} class="poster" loading="lazy" />
     {:else}
       <div class="poster poster-placeholder">No Image</div>
+    {/if}
+    {#if movie.inLibrary}
+      <span class="in-library-badge">In Library</span>
     {/if}
   </div>
 
@@ -23,12 +65,12 @@
           <span class="quality-label">{torrent.quality}</span>
           <button
             class="action-btn play-btn"
-            onclick={() => playNow({ title: movie.title, magnet: torrent.magnet, quality: torrent.quality })}
+            onclick={() => handlePlay(torrent)}
             title="Play now"
           >▶</button>
           <button
             class="action-btn queue-btn"
-            onclick={() => addToQueue({ title: movie.title, magnet: torrent.magnet, quality: torrent.quality })}
+            onclick={() => handleQueue(torrent)}
             title="Add to queue"
           >+</button>
         </div>
@@ -56,6 +98,7 @@
     aspect-ratio: 2/3;
     overflow: hidden;
     background: #111;
+    position: relative;
   }
 
   .poster {
@@ -73,6 +116,20 @@
     height: 100%;
     color: #555;
     font-size: 0.8rem;
+  }
+
+  .in-library-badge {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: rgba(0, 180, 100, 0.9);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
   }
 
   .info {

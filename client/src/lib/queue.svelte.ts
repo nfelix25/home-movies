@@ -1,9 +1,10 @@
-import { startStream, closePlayer } from './playerStore.svelte.js';
+import { startStream, activateStream, closePlayer } from './playerStore.svelte.js';
 
 export interface QueueItem {
   id: string;
   title: string;
   magnet: string;
+  metadata: Record<string, unknown>;
   quality?: string;
 }
 
@@ -23,7 +24,7 @@ export function playNow(item: Omit<QueueItem, 'id'>) {
   const newItem: QueueItem = { ...item, id: uid() };
   queue.items.splice(0, 0, newItem);
   queue.currentIndex = 0;
-  startStream(newItem.magnet, newItem.title);
+  startStream(newItem.magnet, newItem.title, newItem.metadata);
 }
 
 export function addToQueue(item: Omit<QueueItem, 'id'>) {
@@ -32,7 +33,7 @@ export function addToQueue(item: Omit<QueueItem, 'id'>) {
   queue.items.push(newItem);
   if (wasEmpty) {
     queue.currentIndex = 0;
-    startStream(newItem.magnet, newItem.title);
+    startStream(newItem.magnet, newItem.title, newItem.metadata);
   }
 }
 
@@ -40,7 +41,7 @@ export function next() {
   if (queue.currentIndex < queue.items.length - 1) {
     queue.currentIndex += 1;
     const item = queue.items[queue.currentIndex];
-    startStream(item.magnet, item.title);
+    startStream(item.magnet, item.title, item.metadata);
   }
 }
 
@@ -48,7 +49,7 @@ export function prev() {
   if (queue.currentIndex > 0) {
     queue.currentIndex -= 1;
     const item = queue.items[queue.currentIndex];
-    startStream(item.magnet, item.title);
+    startStream(item.magnet, item.title, item.metadata);
   }
 }
 
@@ -56,7 +57,7 @@ export function jumpTo(index: number) {
   if (index >= 0 && index < queue.items.length) {
     queue.currentIndex = index;
     const item = queue.items[index];
-    startStream(item.magnet, item.title);
+    startStream(item.magnet, item.title, item.metadata);
   }
 }
 
@@ -74,14 +75,12 @@ export function removeItem(id: string) {
   }
 
   if (removingCurrent) {
-    // Stay at same index (which is now the next item) unless we were at the end
     if (queue.currentIndex >= queue.items.length) {
       queue.currentIndex = queue.items.length - 1;
     }
     const item = queue.items[queue.currentIndex];
-    startStream(item.magnet, item.title);
+    startStream(item.magnet, item.title, item.metadata);
   } else if (index < queue.currentIndex) {
-    // Removed item was before current — shift index down
     queue.currentIndex -= 1;
   }
 }

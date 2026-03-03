@@ -5,11 +5,14 @@
 
   type Movie = {
     id: number;
+    imdbId: string | null;
     title: string;
     year: number;
     rating: number;
     poster: string | null;
     torrents: { quality: string; magnet: string }[];
+    inLibrary: boolean;
+    libraryId: string | null;
   };
 
   let movies = $state<Movie[]>([]);
@@ -70,7 +73,10 @@
   {:else}
     <div class="grid">
       {#each movies as movie (movie.id)}
-        <MovieCard {movie} />
+        <MovieCard
+          {movie}
+          libraryItem={movie.libraryId ? { id: movie.libraryId, streamUrl: `/api/library/${movie.libraryId}/stream` } : null}
+        />
       {/each}
     </div>
 

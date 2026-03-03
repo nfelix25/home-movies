@@ -1,26 +1,60 @@
 <script lang="ts">
+  import { activateStream } from '../lib/playerStore.svelte.js';
   import { playNow, addToQueue } from '../lib/queue.svelte.js';
 
-  let { episode }: {
-    episode: { title: string; episode: number | null; magnet: string; seeds: number };
+  let {
+    episode,
+    showName = '',
+    season,
+    libraryItem = null,
+  }: {
+    episode: { title: string; episode: number | null; magnet: string; seeds: number; inLibrary?: boolean; libraryId?: string | null };
+    showName?: string;
+    season: number | string;
+    libraryItem?: { id: string; streamUrl: string } | null;
   } = $props();
+
+  function buildMetadata() {
+    return {
+      type: 'tv',
+      title: episode.title,
+      showTitle: showName,
+      season: typeof season === 'number' ? season : null,
+      episode: episode.episode,
+    };
+  }
+
+  function handlePlay() {
+    if (episode.inLibrary && libraryItem) {
+      activateStream(libraryItem.streamUrl, episode.title);
+    } else {
+      playNow({ title: episode.title, magnet: episode.magnet, metadata: buildMetadata() });
+    }
+  }
+
+  function handleQueue() {
+    addToQueue({ title: episode.title, magnet: episode.magnet, metadata: buildMetadata() });
+  }
 </script>
 
-<div class="episode-row">
+<div class="episode-row" class:in-library={episode.inLibrary}>
   <button
     class="ep-main"
-    onclick={() => playNow({ title: episode.title, magnet: episode.magnet })}
+    onclick={handlePlay}
     aria-label="Play {episode.title}"
   >
     <span class="ep-num">
       {episode.episode !== null ? `E${String(episode.episode).padStart(2, '0')}` : '?'}
     </span>
     <span class="ep-title">{episode.title}</span>
+    {#if episode.inLibrary}
+      <span class="lib-indicator" title="In library">✓</span>
+    {/if}
     <span class="ep-seeds" title="Seeds">{episode.seeds} seeds</span>
   </button>
   <button
     class="queue-btn"
-    onclick={() => addToQueue({ title: episode.title, magnet: episode.magnet })}
+    onclick={handleQueue}
     title="Add to queue"
     aria-label="Add to queue"
   >+</button>
@@ -37,6 +71,10 @@
 
   .episode-row:hover {
     background: #1a1a1a;
+  }
+
+  .episode-row.in-library {
+    border-left: 2px solid #2a7a50;
   }
 
   .ep-main {
@@ -68,6 +106,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .lib-indicator {
+    font-size: 0.75rem;
+    color: #4a9;
+    flex-shrink: 0;
+    font-weight: 700;
   }
 
   .ep-seeds {

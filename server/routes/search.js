@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import fetch from 'node-fetch';
+import { listAllItems } from '../library/manager.js';
 
 const router = Router();
 
@@ -359,8 +360,17 @@ router.get('/movies', async (req, res) => {
       throw new Error(`YTS API error: ${payload.status_message || 'unknown error'}`);
     }
 
+    const libraryItems = listAllItems();
+    const libraryByImdbId = new Map(
+      libraryItems.filter((item) => item.metadata.imdbId).map((item) => [item.metadata.imdbId, item.id])
+    );
+
     const movies = Array.isArray(payload.data?.movies)
-      ? payload.data.movies.map(mapMovie).filter(movie => movie.torrents.length > 0)
+      ? payload.data.movies.map(mapMovie).filter(movie => movie.torrents.length > 0).map((movie) => ({
+          ...movie,
+          inLibrary: libraryByImdbId.has(movie.imdbId),
+          libraryId: libraryByImdbId.get(movie.imdbId) || null,
+        }))
       : [];
 
     res.json({ movies });
@@ -390,7 +400,14 @@ router.get('/tv', async (req, res) => {
     const data = await response.json();
     // apibay returns [{"id":"0",...}] with a single zero-id entry when no results found
     const torrents = Array.isArray(data) ? data.filter((t) => t.id !== '0') : [];
-    const grouped = groupEpisodesBySeason(torrents, true);
+    const libraryItems = listAllItems();
+    const libraryTvMap = new Map(
+      libraryItems
+        .filter((item) => item.metadata.type === 'tv' && item.metadata.season != null && item.metadata.episode != null)
+        .map((item) => [`${item.metadata.showTitle?.toLowerCase()}:${item.metadata.season}:${item.metadata.episode}`, item.id])
+    );
+
+    const grouped = groupEpisodesBySeason(torrents, true, q.trim().toLowerCase(), libraryTvMap);
 
     res.json({ seasons: grouped });
   } catch (error) {
@@ -399,7 +416,7 @@ router.get('/tv', async (req, res) => {
   }
 });
 
-function groupEpisodesBySeason(torrents, isTPB = false) {
+function groupEpisodesBySeason(torrents, isTPB = false, showQuery = '', libraryTvMap = new Map()) {
   const seasonsMap = new Map();
   const unknownKey = 'unknown';
 
@@ -418,11 +435,18 @@ function groupEpisodesBySeason(torrents, isTPB = false) {
       seasonsMap.set(key, []);
     }
 
+    const epNum = episode ?? null;
+    const tvKey = epNum !== null && season !== null ? `${showQuery}:${season}:${epNum}` : null;
+    const inLibrary = tvKey ? libraryTvMap.has(tvKey) : false;
+    const libraryId = tvKey ? (libraryTvMap.get(tvKey) || null) : null;
+
     seasonsMap.get(key).push({
-      episode: episode ?? null,
+      episode: epNum,
       title,
       magnet,
-      seeds: seeds || 0
+      seeds: seeds || 0,
+      inLibrary,
+      libraryId,
     });
   }
 
@@ -471,6 +495,7 @@ function parseSeasonEpisode(title = '') {
 function mapMovie(movie) {
   return {
     id: movie.id,
+    imdbId: movie.imdb_code || null,
     title: movie.title_long || movie.title,
     year: movie.year,
     rating: movie.rating,

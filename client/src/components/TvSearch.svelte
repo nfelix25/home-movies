@@ -2,7 +2,7 @@
   import SearchBar from './SearchBar.svelte';
   import SeasonGroup from './SeasonGroup.svelte';
 
-  type Episode = { title: string; episode: number | null; magnet: string; seeds: number };
+  type Episode = { title: string; episode: number | null; magnet: string; seeds: number; inLibrary?: boolean; libraryId?: string | null };
   type Season = { season: number | string; episodes: Episode[] };
 
   let seasons = $state<Season[]>([]);
@@ -51,6 +51,7 @@
           season={seasonGroup.season}
           episodes={seasonGroup.episodes}
           defaultOpen={i === 0}
+          showName={lastQuery}
         />
       {/each}
     </div>

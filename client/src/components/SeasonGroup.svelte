@@ -1,10 +1,11 @@
 <script lang="ts">
   import EpisodeRow from './EpisodeRow.svelte';
 
-  let { season, episodes, defaultOpen = false }: {
+  let { season, episodes, defaultOpen = false, showName = '' }: {
     season: number | string;
-    episodes: { title: string; episode: number | null; magnet: string; seeds: number }[];
+    episodes: { title: string; episode: number | null; magnet: string; seeds: number; inLibrary?: boolean; libraryId?: string | null }[];
     defaultOpen?: boolean;
+    showName?: string;
   } = $props();
 
   let open = $state(defaultOpen);
@@ -22,7 +23,12 @@
   {#if open}
     <div class="episode-list">
       {#each episodes as episode}
-        <EpisodeRow {episode} />
+        <EpisodeRow
+          {episode}
+          {showName}
+          {season}
+          libraryItem={episode.libraryId ? { id: episode.libraryId, streamUrl: `/api/library/${episode.libraryId}/stream` } : null}
+        />
       {/each}
     </div>
   {/if}

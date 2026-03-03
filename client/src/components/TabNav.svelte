@@ -3,6 +3,9 @@
 </script>
 
 <nav class="tab-nav">
+  <button class:active={active === 'library'} onclick={() => ontabchange('library')}>
+    Library
+  </button>
   <button class:active={active === 'movies'} onclick={() => ontabchange('movies')}>
     Movies
   </button>

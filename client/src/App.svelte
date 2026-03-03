@@ -1,11 +1,12 @@
 <script lang="ts">
   import TabNav from './components/TabNav.svelte';
+  import LibraryView from './components/LibraryView.svelte';
   import MovieGrid from './components/MovieGrid.svelte';
   import TvSearch from './components/TvSearch.svelte';
   import Player from './components/Player.svelte';
   import { player } from './lib/playerStore.svelte.js';
 
-  let activeTab = $state('movies');
+  let activeTab = $state('library');
 </script>
 
 <div class="app">
@@ -15,7 +16,9 @@
   </header>
 
   <main>
-    {#if activeTab === 'movies'}
+    {#if activeTab === 'library'}
+      <LibraryView />
+    {:else if activeTab === 'movies'}
       <MovieGrid />
     {:else}
       <TvSearch />
