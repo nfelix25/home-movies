@@ -13,7 +13,7 @@ export default defineConfig({
         target: API_TARGET,
         changeOrigin: true
       },
-      '/stream': {
+      '/library': {
         target: API_TARGET,
         changeOrigin: true
       }

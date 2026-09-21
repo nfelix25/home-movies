@@ -2,6 +2,8 @@ export let player = $state({
   active: false,
   streamUrl: '',
   title: '',
+  imdbId: null,
+  subtitleUrl: null,
   loading: false,
   error: null,
 });
@@ -15,6 +17,8 @@ export async function startStream(magnet, title, metadata = {}) {
   player.loading = true;
   player.title = title;
   player.streamUrl = '';
+  player.imdbId = metadata.imdbId || null;
+  player.subtitleUrl = null;
   player.error = null;
 
   try {
@@ -39,11 +43,13 @@ export async function startStream(magnet, title, metadata = {}) {
 }
 
 /** Activate player with a known stream URL (no library add needed) */
-export function activateStream(streamUrl, title) {
+export function activateStream(streamUrl, title, imdbId = null) {
   player.active = true;
   player.loading = false;
   player.title = title;
   player.streamUrl = streamUrl;
+  player.imdbId = imdbId;
+  player.subtitleUrl = null;
   player.error = null;
 }
 
@@ -51,6 +57,8 @@ export function closePlayer() {
   player.active = false;
   player.streamUrl = '';
   player.title = '';
+  player.imdbId = null;
+  player.subtitleUrl = null;
   player.loading = false;
   player.error = null;
 }

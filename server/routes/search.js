@@ -5,6 +5,7 @@ import { listAllItems } from '../library/manager.js';
 const router = Router();
 
 const YTS_BASE_URL = 'https://movies-api.accel.li/api/v2/list_movies.json';
+const YTS_SUGGESTIONS_URL = 'https://movies-api.accel.li/api/v2/movie_suggestions.json';
 const YTS_DEFAULT_SORT = 'download_count';
 const TRACKERS = [
   'udp://tracker.openbittorrent.com:6969/announce',
@@ -332,11 +333,20 @@ const TRACKERS = [
 
 router.get('/movies', async (req, res) => {
   try {
-    const { q, genre, page = '1', sort } = req.query;
+    const { q, genre, page = '1', sort, order_by, minimum_rating, limit } = req.query;
     const searchParams = new URLSearchParams();
 
     searchParams.set('page', page);
     searchParams.set('sort_by', typeof sort === 'string' && sort.trim() ? sort : YTS_DEFAULT_SORT);
+
+    if (typeof order_by === 'string' && (order_by === 'asc' || order_by === 'desc')) {
+      searchParams.set('order_by', order_by);
+    }
+
+    const minRating = parseInt(minimum_rating, 10);
+    if (!isNaN(minRating) && minRating >= 1 && minRating <= 9) {
+      searchParams.set('minimum_rating', minRating);
+    }
 
     if (q) {
       searchParams.set('query_term', q);
@@ -344,6 +354,11 @@ router.get('/movies', async (req, res) => {
 
     if (genre) {
       searchParams.set('genre', genre);
+    }
+
+    const limitNum = parseInt(limit, 10);
+    if (limitNum === 20 || limitNum === 50) {
+      searchParams.set('limit', limitNum);
     }
 
     const response = await fetch(`${YTS_BASE_URL}?${searchParams.toString()}`, {
@@ -377,6 +392,48 @@ router.get('/movies', async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch YTS movies', error);
     res.status(502).json({ error: 'Unable to fetch movies from YTS at this time.' });
+  }
+});
+
+router.get('/movies/:id/suggestions', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const movieId = parseInt(id, 10);
+    if (isNaN(movieId)) {
+      return res.status(400).json({ error: 'Invalid movie ID.' });
+    }
+
+    const response = await fetch(`${YTS_SUGGESTIONS_URL}?movie_id=${movieId}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; home-movies/1.0)' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`YTS responded with status ${response.status}`);
+    }
+
+    const payload = await response.json();
+
+    if (payload.status !== 'ok') {
+      throw new Error(`YTS API error: ${payload.status_message || 'unknown error'}`);
+    }
+
+    const libraryItems = listAllItems();
+    const libraryByImdbId = new Map(
+      libraryItems.filter((item) => item.metadata.imdbId).map((item) => [item.metadata.imdbId, item.id])
+    );
+
+    const movies = Array.isArray(payload.data?.movies)
+      ? payload.data.movies.map(mapMovie).filter(movie => movie.torrents.length > 0).map((movie) => ({
+          ...movie,
+          inLibrary: libraryByImdbId.has(movie.imdbId),
+          libraryId: libraryByImdbId.get(movie.imdbId) || null,
+        }))
+      : [];
+
+    res.json({ movies });
+  } catch (error) {
+    console.error('Failed to fetch YTS suggestions', error);
+    res.status(502).json({ error: 'Unable to fetch suggestions from YTS at this time.' });
   }
 });
 

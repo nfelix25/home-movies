@@ -1,7 +1,7 @@
 <script lang="ts">
-  let { onsearch, placeholder = 'Search…' }: { onsearch: (q: string) => void; placeholder?: string } = $props();
+  let { onsearch, placeholder = 'Search…', value = '' }: { onsearch: (q: string) => void; placeholder?: string; value?: string } = $props();
 
-  let query = $state('');
+  let query = $state(value);
 
   function handleSubmit(e: SubmitEvent) {
     e.preventDefault();

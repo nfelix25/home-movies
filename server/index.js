@@ -6,6 +6,7 @@ import cors from 'cors';
 
 import searchRouter from './routes/search.js';
 import libraryRouter from './routes/library.js';
+import subtitlesRouter from './routes/subtitles.js';
 import { scanLibrary } from './library/scanner.js';
 
 const app = express();
@@ -23,6 +24,7 @@ app.use(express.json());
 
 app.use('/api', searchRouter);
 app.use('/api', libraryRouter);
+app.use('/api', subtitlesRouter);
 
 // Serve library files (posters etc.) as static assets
 app.use('/library', express.static(libraryRoot));

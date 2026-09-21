@@ -7,6 +7,21 @@
   let queueOpen = $state(false);
   let videoEl = $state<HTMLVideoElement | null>(null);
 
+  // Fetch subtitles when a movie with an imdbId starts playing
+  $effect(() => {
+    const imdbId = player.imdbId;
+    if (!imdbId || !player.streamUrl) return;
+
+    fetch(`/api/subtitles?imdb_id=${encodeURIComponent(imdbId)}`)
+      .then(async (res) => {
+        if (!res.ok) return;
+        const vttText = await res.text();
+        const blob = new Blob([vttText], { type: 'text/vtt' });
+        player.subtitleUrl = URL.createObjectURL(blob);
+      })
+      .catch(() => {});
+  });
+
   $effect(() => {
     if (!player.streamUrl || !('mediaSession' in navigator)) return;
 
@@ -65,7 +80,6 @@
             <button onclick={closePlayer}>Dismiss</button>
           </div>
         {:else if player.streamUrl}
-          <!-- svelte-ignore a11y_media_has_caption -->
           <video
             bind:this={videoEl}
             src={player.streamUrl}
@@ -77,7 +91,11 @@
             onended={next}
             onplay={() => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; }}
             onpause={() => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; }}
-          ></video>
+          >
+            {#if player.subtitleUrl}
+              <track kind="subtitles" label="English" srclang="en" src={player.subtitleUrl} default />
+            {/if}
+          </video>
         {/if}
       </div>
     </div>

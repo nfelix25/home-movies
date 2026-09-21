@@ -12,6 +12,7 @@ import {
   listAllItems,
   getDownloadFile,
   getDownload,
+  waitForFile,
 } from '../library/manager.js';
 import { findMovieByImdbId, searchMovie, searchShow, getEpisode, downloadPoster } from '../library/tmdb.js';
 
@@ -31,13 +32,6 @@ const MIME_TYPES = {
 
 function getMimeType(filename) {
   return MIME_TYPES[path.extname(filename).toLowerCase()] ?? 'application/octet-stream';
-}
-
-function posterUrl(item) {
-  if (!item.metadata.posterPath) return null;
-  const rel = path.join(item.libraryDir, item.metadata.posterPath);
-  // Make it a URL relative to the static /library mount
-  return `/library/${path.relative(process.env.LIBRARY_ROOT || '', rel)}`;
 }
 
 // ── POST /api/library/add ──────────────────────────────────────────────────────
@@ -62,7 +56,8 @@ router.post('/library/add', async (req, res) => {
 
   try {
     if (type === 'movie') {
-      const { title, year, imdbId } = clientMeta;
+      const { year, imdbId } = clientMeta;
+      const title = String(clientMeta.title).replace(/\s*\(\d{4}\)\s*$/, '').trim();
       let tmdbResult = imdbId ? await findMovieByImdbId(imdbId) : null;
       if (!tmdbResult) tmdbResult = await searchMovie(title, year);
       id = tmdbResult ? `movie-${tmdbResult.tmdbId}` : `movie-local-${slugify(title + '-' + year)}`;
@@ -158,7 +153,7 @@ router.get('/library', (req, res) => {
       ? path.join(item.libraryDir, item.metadata.posterPath)
       : null;
     const posterUrl = posterPath
-      ? '/library/' + path.relative(libraryRoot, posterPath).replace(/\\/g, '/')
+      ? '/library/' + path.relative(libraryRoot, posterPath).replace(/\\/g, '/').split('/').map(encodeURIComponent).join('/')
       : (item.metadata.poster || null);
 
     return {
@@ -208,7 +203,7 @@ router.delete('/library/:id', (req, res) => {
 
 // ── GET /api/library/:id/stream ───────────────────────────────────────────────
 
-router.get('/library/:id/stream', (req, res) => {
+router.get('/library/:id/stream', async (req, res) => {
   const { id } = req.params;
 
   const download = getDownload(id);
@@ -227,7 +222,11 @@ router.get('/library/:id/stream', (req, res) => {
   if (download && download.status === 'downloading' && download.torrent) {
     wtFile = getDownloadFile(id);
     if (!wtFile) {
-      return res.status(503).json({ error: 'Torrent metadata not yet available.' });
+      try {
+        wtFile = await waitForFile(id);
+      } catch (err) {
+        return res.status(503).json({ error: 'Timed out waiting for torrent metadata.' });
+      }
     }
     fileSize = wtFile.length;
     contentType = getMimeType(wtFile.name);
@@ -259,6 +258,7 @@ router.get('/library/:id/stream', (req, res) => {
       ? wtFile.createReadStream({ start, end })
       : fs.createReadStream(filePath, { start, end });
 
+    stream.on('error', () => {});
     stream.pipe(res);
     req.on('close', () => stream.destroy());
   } else {
@@ -272,6 +272,7 @@ router.get('/library/:id/stream', (req, res) => {
       ? wtFile.createReadStream()
       : fs.createReadStream(filePath);
 
+    stream.on('error', () => {});
     stream.pipe(res);
     req.on('close', () => stream.destroy());
   }

@@ -5,6 +5,7 @@
   let {
     movie,
     libraryItem = null,
+    onmoreLikeThis = null,
   }: {
     movie: {
       id: number;
@@ -17,6 +18,7 @@
       inLibrary: boolean;
     };
     libraryItem?: { id: string; streamUrl: string } | null;
+    onmoreLikeThis?: ((id: number, title: string) => void) | null;
   } = $props();
 
   function buildMetadata(quality?: string) {
@@ -32,7 +34,7 @@
 
   function handlePlay(torrent: { quality: string; magnet: string }) {
     if (movie.inLibrary && libraryItem) {
-      activateStream(libraryItem.streamUrl, movie.title);
+      activateStream(libraryItem.streamUrl, movie.title, movie.imdbId);
     } else {
       playNow({ title: movie.title, magnet: torrent.magnet, metadata: buildMetadata(torrent.quality) });
     }
@@ -76,6 +78,14 @@
         </div>
       {/each}
     </div>
+
+    {#if onmoreLikeThis}
+      <button
+        class="more-like-btn"
+        onclick={() => onmoreLikeThis!(movie.id, movie.title)}
+        title="More like this"
+      >More like this</button>
+    {/if}
   </div>
 </article>
 
@@ -199,5 +209,24 @@
     background: #2a4a2a;
     color: #8f8;
     border-color: #4a7a4a;
+  }
+
+  .more-like-btn {
+    margin-top: 0.4rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    border-radius: 3px;
+    border: 1px solid #333;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+
+  .more-like-btn:hover {
+    color: #adf;
+    border-color: #4a8abf;
+    background: #1a2a3a;
   }
 </style>
