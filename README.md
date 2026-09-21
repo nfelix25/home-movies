@@ -8,6 +8,19 @@ A minimal local tool to search for movies and TV shows and stream them directly 
 npm install
 ```
 
+## Environment
+
+Copy `.env.example` to `.env` in the repo root and fill in:
+
+| Variable | Used for |
+| --- | --- |
+| `TMDB_API_KEY` | Posters, library metadata, and the facts in the film details popup |
+| `OPEN_AI_API_KEY` | The popup's spoiler-free premise, review consensus and recommendations (OpenAI Responses API with web search) |
+| `OPENAI_MODEL` | Optional. Defaults to `gpt-5.4-mini` |
+
+Click a poster in the movie grid to open the popup. Without `OPEN_AI_API_KEY` it still shows the TMDB facts.
+Generated details are cached for 30 days in `server/cache/` (delete a file there, or use Regenerate in the popup, to redo one).
+
 ## Development
 
 ```bash

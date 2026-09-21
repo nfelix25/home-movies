@@ -1,11 +1,11 @@
 <script lang="ts">
   let { onsearch, placeholder = 'Search…', value = '' }: { onsearch: (q: string) => void; placeholder?: string; value?: string } = $props();
 
-  let query = $state(value);
+  let query = $derived(value);
 
   function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
-    if (query.trim()) onsearch(query.trim());
+    onsearch(query.trim());
   }
 </script>
 

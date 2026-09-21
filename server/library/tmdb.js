@@ -78,6 +78,103 @@ export async function getEpisode(showId, season, episode) {
   };
 }
 
+export function isTmdbEnabled() {
+  return enabled;
+}
+
+const FACTS_TTL_MS = 10 * 60 * 1000;
+const factsMemo = new Map();
+
+/**
+ * Full facts for the film-details popup, or null when TMDB has no match.
+ * Rejects when TMDB itself fails, so an outage is not reported as "no match".
+ * The popup asks for facts and insights at the same moment and both need these,
+ * so lookups are shared for a few minutes. Failures and misses are never kept.
+ */
+export function getMovieFacts({ imdbId = null, title = null, year = null }) {
+  const key = imdbId || `${title}|${year}`;
+  const cached = factsMemo.get(key);
+  if (cached && Date.now() - cached.at < FACTS_TTL_MS) return cached.promise;
+
+  const promise = fetchMovieFacts({ imdbId, title, year });
+  factsMemo.set(key, { promise, at: Date.now() });
+  const forget = () => {
+    if (factsMemo.get(key)?.promise === promise) factsMemo.delete(key);
+  };
+  promise.then((facts) => facts === null && forget(), forget);
+  return promise;
+}
+
+async function fetchMovieFacts({ imdbId, title, year }) {
+  let tmdbId = null;
+  if (imdbId) tmdbId = (await findMovieByImdbId(imdbId))?.tmdbId ?? null;
+  if (!tmdbId && title) tmdbId = (await searchMovie(title, year))?.tmdbId ?? null;
+  if (!tmdbId) return null;
+
+  const raw = await tmdbFetch(`/movie/${tmdbId}?append_to_response=credits,release_dates`);
+  if (!raw) throw new Error('TMDB details lookup failed');
+  return mapFacts(raw);
+}
+
+function mapFacts(raw) {
+  return {
+    tmdbId: raw.id,
+    imdbId: raw.imdb_id,
+    title: raw.title,
+    year: raw.release_date ? Number(raw.release_date.slice(0, 4)) : null,
+    tagline: raw.tagline || null,
+    overview: raw.overview || null,
+    runtimeMinutes: raw.runtime || null,
+    certification: usCertification(raw.release_dates),
+    genres: raw.genres.map((g) => g.name),
+    directors: raw.credits.crew.filter((c) => c.job === 'Director').map((c) => c.name),
+    cast: raw.credits.cast.slice(0, 8).map((c) => ({ name: c.name, character: c.character })),
+    releaseDate: raw.release_date || null,
+    languages: raw.spoken_languages.map((l) => l.english_name),
+    countries: raw.production_countries.map((c) => c.iso_3166_1),
+    tmdbScore: raw.vote_count ? Math.round(raw.vote_average * 10) / 10 : null,
+    tmdbVoteCount: raw.vote_count,
+  };
+}
+
+/** First non-empty US certification; premiere-type entries often carry an empty one. */
+function usCertification(releaseDates) {
+  const us = releaseDates.results.find((r) => r.iso_3166_1 === 'US');
+  return us?.release_dates.find((d) => d.certification)?.certification || null;
+}
+
+/**
+ * Check that a model-suggested film really exists. Searches by title only (a year
+ * filter would hide a film the model dated one year off), then accepts the first of
+ * the top 5 results whose title matches and whose release year is within 1.
+ * Returns TMDB's canonical { tmdbId, title, year }, null if nothing matches, and
+ * rejects when TMDB fails so an outage is not read as "no such film".
+ */
+export async function verifyFilm(title, year) {
+  const data = await tmdbFetch(`/search/movie?query=${encodeURIComponent(title)}`);
+  if (!data) throw new Error('TMDB search failed');
+
+  const wanted = normalizeTitle(title);
+  for (const result of data.results.slice(0, 5)) {
+    if (!result.release_date) continue;
+    const resultYear = Number(result.release_date.slice(0, 4));
+    if (!(Math.abs(resultYear - year) <= 1)) continue;
+    if (normalizeTitle(result.title) !== wanted) continue;
+    return { tmdbId: result.id, title: result.title, year: resultYear };
+  }
+  return null;
+}
+
+function normalizeTitle(title) {
+  return title
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 /** Download poster image to destFile; skips if file already exists */
 export async function downloadPoster(posterPath, destFile) {
   if (!posterPath || !enabled) return;

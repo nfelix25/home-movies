@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './env.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -7,7 +7,9 @@ import cors from 'cors';
 import searchRouter from './routes/search.js';
 import libraryRouter from './routes/library.js';
 import subtitlesRouter from './routes/subtitles.js';
+import detailsRouter from './routes/details.js';
 import { scanLibrary } from './library/scanner.js';
+import { checkInsightsConfig } from './details/insights.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +27,7 @@ app.use(express.json());
 app.use('/api', searchRouter);
 app.use('/api', libraryRouter);
 app.use('/api', subtitlesRouter);
+app.use('/api', detailsRouter);
 
 // Serve library files (posters etc.) as static assets
 app.use('/library', express.static(libraryRoot));
@@ -50,6 +53,8 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: 'Internal server error' });
 });
+
+checkInsightsConfig();
 
 // Scan library before accepting requests
 await scanLibrary(libraryRoot);

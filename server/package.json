@@ -6,7 +6,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "node index.js",
-    "start": "NODE_ENV=production node index.js"
+    "start": "NODE_ENV=production node index.js",
+    "test": "node --test",
+    "smoke:insights": "node details/smoke.js"
   },
   "keywords": [],
   "author": "",

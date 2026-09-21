@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import EpisodeRow from './EpisodeRow.svelte';
 
   let { season, episodes, defaultOpen = false, showName = '' }: {
@@ -8,9 +9,9 @@
     showName?: string;
   } = $props();
 
-  let open = $state(defaultOpen);
+  let open = $state(untrack(() => defaultOpen));
 
-  const label = season === 'Unknown' ? 'Unknown Season' : `Season ${season}`;
+  const label = $derived(season === 'Unknown' ? 'Unknown Season' : `Season ${season}`);
 </script>
 
 <section class="season-group">

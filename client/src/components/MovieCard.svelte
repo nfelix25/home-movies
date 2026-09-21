@@ -2,23 +2,27 @@
   import { activateStream } from '../lib/playerStore.svelte.js';
   import { playNow, addToQueue } from '../lib/queue.svelte.js';
 
+  type CardMovie = {
+    id: number;
+    imdbId: string | null;
+    title: string;
+    year: number;
+    rating: number;
+    poster: string | null;
+    torrents: { quality: string; magnet: string }[];
+    inLibrary: boolean;
+  };
+
   let {
     movie,
     libraryItem = null,
     onmoreLikeThis = null,
+    onopen = null,
   }: {
-    movie: {
-      id: number;
-      imdbId: string | null;
-      title: string;
-      year: number;
-      rating: number;
-      poster: string | null;
-      torrents: { quality: string; magnet: string }[];
-      inLibrary: boolean;
-    };
+    movie: CardMovie;
     libraryItem?: { id: string; streamUrl: string } | null;
     onmoreLikeThis?: ((id: number, title: string) => void) | null;
+    onopen?: ((movie: CardMovie) => void) | null;
   } = $props();
 
   function buildMetadata(quality?: string) {
@@ -45,12 +49,27 @@
   }
 </script>
 
+{#snippet posterImage()}
+  {#if movie.poster}
+    <img src={movie.poster} alt={onopen ? '' : movie.title} class="poster" loading="lazy" />
+  {:else}
+    <div class="poster poster-placeholder">No Image</div>
+  {/if}
+{/snippet}
+
 <article class="movie-card">
   <div class="poster-wrap">
-    {#if movie.poster}
-      <img src={movie.poster} alt={movie.title} class="poster" loading="lazy" />
+    {#if onopen}
+      <button
+        class="poster-btn"
+        onclick={() => onopen!(movie)}
+        aria-label="Details for {movie.title}"
+        title="Film details"
+      >
+        {@render posterImage()}
+      </button>
     {:else}
-      <div class="poster poster-placeholder">No Image</div>
+      {@render posterImage()}
     {/if}
     {#if movie.inLibrary}
       <span class="in-library-badge">In Library</span>
@@ -128,7 +147,24 @@
     font-size: 0.8rem;
   }
 
+  .poster-btn {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  .poster-btn:hover,
+  .poster-btn:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(170, 221, 255, 0.65);
+    outline: none;
+  }
+
   .in-library-badge {
+    pointer-events: none;
     position: absolute;
     top: 0.4rem;
     right: 0.4rem;

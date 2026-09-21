@@ -80,6 +80,7 @@
             <button onclick={closePlayer}>Dismiss</button>
           </div>
         {:else if player.streamUrl}
+          <!-- svelte-ignore a11y_media_has_caption (User-selected media has optional subtitles; caption tracks are not guaranteed to be available.) -->
           <video
             bind:this={videoEl}
             src={player.streamUrl}

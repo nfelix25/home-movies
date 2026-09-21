@@ -3,6 +3,7 @@
   import SearchBar from './SearchBar.svelte';
   import MovieCard from './MovieCard.svelte';
   import FilterPanel from './FilterPanel.svelte';
+  import MovieDetails from './MovieDetails.svelte';
 
   type Movie = {
     id: number;
@@ -72,7 +73,7 @@
     const orderByParam = params.get('order') ?? '';
     const orderByFromUrl = orderByParam === 'asc' || orderByParam === 'desc' ? orderByParam : DEFAULTS.orderBy;
     const limitParam = parseInt(params.get('limit') ?? '', 10);
-    const pageSizeFromUrl = [20, 50, 100].includes(limitParam) ? limitParam : DEFAULTS.pageSize;
+    const pageSizeFromUrl = [20, 50, 100, 250, 500, 1000].includes(limitParam) ? limitParam : DEFAULTS.pageSize;
 
     return {
       q,
@@ -108,7 +109,7 @@
     if (sortBy !== DEFAULTS.sortBy) params.set('sort', sortBy);
     if (orderBy !== DEFAULTS.orderBy) params.set('order_by', orderBy);
     if (minRating > 0) params.set('minimum_rating', String(minRating));
-    // YTS accepts max 50; the 100 case is handled by fetching two pages
+    // Larger result limits are assembled from multiple API pages of at most 50
     const effectiveLimit = Math.min(limit, 50);
     if (effectiveLimit !== 20) params.set('limit', String(effectiveLimit));
 
@@ -123,49 +124,30 @@
     error = null;
 
     try {
-      let fetched: Movie[];
+      const apiLimit = Math.min(pageSize, 50);
+      const pagesPerLoad = Math.ceil(pageSize / apiLimit);
+      const firstPage = (page - 1) * pagesPerLoad + 1;
+      const genres = selectedGenres.length > 0 ? selectedGenres : [null];
 
-      if (selectedGenres.length > 1) {
-        // OR logic: fetch each genre in parallel, merge, dedup by id
-        let genreFetches: Promise<Movie[]>[];
+      // Fetch consecutive API pages for each genre, preserving OR matching.
+      const results = await Promise.all(
+        genres.flatMap((genre) =>
+          Array.from({ length: pagesPerLoad }, (_, offset) =>
+            fetchSinglePage(q, firstPage + offset, genre, apiLimit)
+          )
+        )
+      );
 
-        if (pageSize === 100) {
-          // For each genre, fetch two pages of 50
-          genreFetches = selectedGenres.flatMap((g) => [
-            fetchSinglePage(q, page * 2 - 1, g, 50),
-            fetchSinglePage(q, page * 2, g, 50),
-          ]);
-        } else {
-          genreFetches = selectedGenres.map((g) => fetchSinglePage(q, page, g, pageSize));
-        }
-
-        const results = await Promise.all(genreFetches);
-        const seen = new Set<number>();
-        fetched = [];
-        for (const batch of results) {
-          for (const m of batch) {
-            if (!seen.has(m.id)) {
-              seen.add(m.id);
-              fetched.push(m);
-            }
+      // Genres and API pages can overlap, including with previously loaded movies.
+      const seen = new Set<number>(append ? movies.map((movie) => movie.id) : []);
+      let fetched: Movie[] = [];
+      for (const batch of results) {
+        for (const movie of batch) {
+          if (!seen.has(movie.id)) {
+            seen.add(movie.id);
+            fetched.push(movie);
           }
         }
-      } else if (pageSize === 100) {
-        // Single genre (or no genre), two pages of 50
-        const [batch1, batch2] = await Promise.all([
-          fetchSinglePage(q, page * 2 - 1, selectedGenres[0] ?? null, 50),
-          fetchSinglePage(q, page * 2, selectedGenres[0] ?? null, 50),
-        ]);
-        const seen = new Set<number>();
-        fetched = [];
-        for (const m of [...batch1, ...batch2]) {
-          if (!seen.has(m.id)) {
-            seen.add(m.id);
-            fetched.push(m);
-          }
-        }
-      } else {
-        fetched = await fetchSinglePage(q, page, selectedGenres[0] ?? null, pageSize);
       }
 
       // Client-side year filter
@@ -244,6 +226,34 @@
     suggestionsError = null;
   }
 
+  // ── Film details popup ────────────────────────────────────────────────────
+  // The popup only needs what a card already knows, not the torrents or library id.
+  type DetailsTarget = Pick<Movie, 'title' | 'year' | 'imdbId' | 'poster' | 'rating'>;
+  let detailsMovie = $state<DetailsTarget | null>(null);
+
+  function openDetails(movie: DetailsTarget) {
+    detailsMovie = movie;
+  }
+
+  function closeDetails() {
+    detailsMovie = null;
+  }
+
+  /** A recommended film was clicked in the popup: look it up in the grid. */
+  function handleRecommendationSearch(title: string) {
+    detailsMovie = null;
+    // Leave suggestions mode without restoring the saved grid; the search replaces it.
+    suggestionsContext = null;
+    suggestionMovies = [];
+    suggestionsError = null;
+    // A leftover filter (say, 8+ rating) could hide the very film being looked up.
+    selectedGenres = [];
+    minRating = DEFAULTS.minRating;
+    minYear = DEFAULTS.minYear;
+    handleSearch(title);
+    window.scrollTo({ top: 0 });
+  }
+
   onMount(() => {
     const fromUrl = readFromUrl();
     currentQuery = fromUrl.q;
@@ -278,6 +288,7 @@
             {movie}
             libraryItem={movie.libraryId ? { id: movie.libraryId, streamUrl: `/api/library/${movie.libraryId}/stream` } : null}
             onmoreLikeThis={handleMoreLikeThis}
+            onopen={openDetails}
           />
         {/each}
       </div>
@@ -290,6 +301,9 @@
         <option value={20}>20</option>
         <option value={50}>50</option>
         <option value={100}>100</option>
+        <option value={250}>250</option>
+        <option value={500}>500</option>
+        <option value={1000}>1000</option>
       </select>
       <button
         class="filter-toggle"
@@ -326,6 +340,7 @@
             {movie}
             libraryItem={movie.libraryId ? { id: movie.libraryId, streamUrl: `/api/library/${movie.libraryId}/stream` } : null}
             onmoreLikeThis={handleMoreLikeThis}
+            onopen={openDetails}
           />
         {/each}
       </div>
@@ -339,6 +354,10 @@
       {/if}
     {/if}
   {/if}
+
+  {#if detailsMovie}
+    <MovieDetails movie={detailsMovie} onclose={closeDetails} onsearch={handleRecommendationSearch} />
+  {/if}
 </div>
 
 <style>
@@ -350,6 +369,7 @@
 
   .search-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.75rem;
     align-items: center;
   }

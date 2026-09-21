@@ -74,12 +74,13 @@
 
 <div class="filter-panel">
   <div class="filter-row">
-    <label class="filter-label">Genres</label>
-    <div class="genre-chips">
+    <span class="filter-label" id="filter-genres">Genres</span>
+    <div class="genre-chips" role="group" aria-labelledby="filter-genres">
       {#each GENRES as genre}
         <button
           class="genre-chip"
           class:active={selectedGenres.includes(genre)}
+          aria-pressed={selectedGenres.includes(genre)}
           onclick={() => toggleGenre(genre)}
         >{genre}</button>
       {/each}
