@@ -120,6 +120,7 @@ function mapFacts(raw) {
   return {
     tmdbId: raw.id,
     imdbId: raw.imdb_id,
+    collectionId: raw.belongs_to_collection?.id ?? null,
     title: raw.title,
     year: raw.release_date ? Number(raw.release_date.slice(0, 4)) : null,
     tagline: raw.tagline || null,
@@ -141,6 +142,16 @@ function mapFacts(raw) {
 function usCertification(releaseDates) {
   const us = releaseDates.results.find((r) => r.iso_3166_1 === 'US');
   return us?.release_dates.find((d) => d.certification)?.certification || null;
+}
+
+/**
+ * TMDB ids of every film in a franchise ("The Matrix Collection"), the one asked about
+ * included. Rejects when TMDB fails, so a sequel is never let through by an outage.
+ */
+export async function getCollectionMemberIds(collectionId) {
+  const data = await tmdbFetch(`/collection/${collectionId}`);
+  if (!data) throw new Error('TMDB collection lookup failed');
+  return data.parts.map((part) => part.id);
 }
 
 /**

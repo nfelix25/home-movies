@@ -10,6 +10,7 @@
     formatRuntime,
     hostOf,
     isAbort,
+    labelOf,
     type Facts,
     type Insights,
     type Loadable,
@@ -133,7 +134,11 @@
     const list: { value: string; source: string }[] = [];
     if (factsData?.tmdbScore != null) list.push({ value: factsData.tmdbScore.toFixed(1), source: 'TMDB' });
     if (movie.rating > 0) list.push({ value: movie.rating.toFixed(1), source: 'IMDb' });
-    return [...list, ...webScores];
+    // "Rotten Tomatoes critics" and "Rotten Tomatoes audience" are different numbers.
+    for (const score of webScores) {
+      list.push({ value: score.value, source: score.kind ? `${score.source} ${score.kind}` : score.source });
+    }
+    return list;
   });
 
   const showReviews = $derived(scores.length > 0 || loadingInsights || insightsData !== null);
@@ -236,6 +241,13 @@
       </p>
     {/if}
 
+    {#if insightsData?.searches === 0}
+      <p class="notice" role="status">
+        No web search ran for this result, so its reviews and scores come from the model's memory. Regenerate to
+        try again.
+      </p>
+    {/if}
+
     <section aria-labelledby="premise-heading">
       <h3 id="premise-heading">
         {insightsData || loadingInsights ? 'Premise' : 'Synopsis'}
@@ -306,7 +318,11 @@
             </div>
           {/if}
           {#if webScores.length > 0}
-            <p class="hint">Scores other than TMDB and IMDb come from a web search. Check the sources below.</p>
+            <p class="hint">
+              {insightsData.sources.length > 0
+                ? 'Scores other than TMDB and IMDb come from a web search. Check the sources below.'
+                : 'Scores other than TMDB and IMDb come from a web search, but no sources were returned. Treat them as unverified.'}
+            </p>
           {/if}
         {:else if loadingInsights}
           {@render skeleton(['100%', '90%', '96%', '52%'])}
@@ -345,8 +361,8 @@
             <ul>
               {#each insightsData.sources as source (source.url)}
                 <li>
-                  <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title || hostOf(source.url)}</a>
-                  <span class="host">{hostOf(source.url)}</span>
+                  <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title || labelOf(source.url)}</a>
+                  {#if source.title}<span class="host">{hostOf(source.url)}</span>{/if}
                 </li>
               {/each}
             </ul>

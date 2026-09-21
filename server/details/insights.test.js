@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { stubFetch } from '../testing/http.js';
 import { MATRIX_FACTS, MODEL_PAYLOAD, OPENAI_URL, openAiResponse } from '../testing/openaiFixtures.js';
-import { openAiRoute, tmdbSearchRoute } from '../testing/upstream.js';
+import { collectionRoute, openAiRoute, tmdbSearchRoute } from '../testing/upstream.js';
 import { createCache } from './cache.js';
 
 // tmdb.js (used to verify recommendations) reads its key when first imported.
@@ -62,6 +62,58 @@ test('parseResponse drops sources that are not http(s) links, since the popup re
   assert.deepEqual(sources, [{ title: 'OK', url: 'https://ok.example/review' }]);
 });
 
+// A live run with "no citations" in the prompt returned no annotations at all, so sources were
+// empty. The search reports every page it consulted, and those are listed after the cited ones.
+test('parseResponse lists consulted pages even when the model cited nothing', () => {
+  const consulted = [
+    'https://www.metacritic.com/movie/the-matrix/?utm_source=openai',
+    'javascript:alert(1)',
+    'https://www.imdb.com/title/tt0133093/',
+  ];
+
+  const { sources } = parseResponse(openAiResponse({ annotations: [], consulted }));
+
+  assert.deepEqual(sources, [
+    { url: 'https://www.metacritic.com/movie/the-matrix/' },
+    { url: 'https://www.imdb.com/title/tt0133093/' },
+  ]);
+});
+
+test('parseResponse puts cited sources first and does not repeat a consulted page that was also cited', () => {
+  const consulted = [
+    'https://www.rottentomatoes.com/m/matrix?utm_source=openai',
+    'https://www.metacritic.com/movie/the-matrix/',
+  ];
+
+  const { sources } = parseResponse(openAiResponse({ consulted }));
+
+  assert.deepEqual(sources, [
+    {
+      title: 'The Matrix movie review & film summary (1999) | Roger Ebert',
+      url: 'https://www.rogerebert.com/reviews/the-matrix-1999',
+    },
+    { title: 'The Matrix | Rotten Tomatoes', url: 'https://www.rottentomatoes.com/m/matrix' },
+    { url: 'https://www.metacritic.com/movie/the-matrix/' },
+  ]);
+});
+
+test('parseResponse caps the source list at 8 without dropping cited sources', () => {
+  const consulted = Array.from({ length: 12 }, (_, i) => `https://example.com/page-${i}`);
+
+  const { sources } = parseResponse(openAiResponse({ consulted }));
+
+  assert.equal(sources.length, 8);
+  assert.deepEqual(sources.slice(0, 2).map((s) => s.title), [
+    'The Matrix movie review & film summary (1999) | Roger Ebert',
+    'The Matrix | Rotten Tomatoes',
+  ]);
+});
+
+test('parseResponse counts the web searches that ran, so a result with none can be flagged', () => {
+  assert.equal(parseResponse(openAiResponse({ searchCalls: 2 })).searches, 2);
+  assert.equal(parseResponse(openAiResponse({ searchCalls: 0 })).searches, 0);
+});
+
 test('parseResponse rejects an incomplete response and says why', () => {
   const incomplete = openAiResponse({ status: 'incomplete', incompleteReason: 'max_output_tokens' });
 
@@ -101,6 +153,9 @@ const malformed = [
   ['reviews that are not an object', (p) => (p.reviews = 'good'), /reviews\.critics/],
   ['praised that is not an array', (p) => (p.reviews.praised = 'great'), /reviews\.praised/],
   ['a score with no value', (p) => delete p.reviews.scores[0].value, /scores\[0\]\.value/],
+  // Two "Rotten Tomatoes" numbers are meaningless unless each says whose score it is.
+  ['a score with no kind', (p) => delete p.reviews.scores[0].kind, /scores\[0\]\.kind/],
+  ['a score whose kind is neither critics nor audience', (p) => (p.reviews.scores[1].kind = 'everyone'), /scores\[1\]\.kind/],
   ['a recommendation year that is not an integer', (p) => (p.moreLikeThis[1].year = '1995'), /moreLikeThis\[1\]\.year/],
   ['a recommendation with no reason', (p) => delete p.ifYouLiked[0].reason, /ifYouLiked\[0\]\.reason/],
   ['moreLikeThis that is not an array', (p) => (p.moreLikeThis = null), /moreLikeThis/],
@@ -128,7 +183,7 @@ test('validateInsights trims review lists to their display caps', () => {
   const payload = structuredClone(MODEL_PAYLOAD);
   payload.reviews.praised = ['p1', 'p2', 'p3', 'p4', 'p5'];
   payload.reviews.criticized = ['c1', 'c2', 'c3', 'c4'];
-  payload.reviews.scores = ['a', 'b', 'c', 'd', 'e', 'f'].map((source) => ({ source, value: '1' }));
+  payload.reviews.scores = ['a', 'b', 'c', 'd', 'e', 'f'].map((source) => ({ source, kind: 'critics', value: '1' }));
 
   const { reviews } = validateInsights(payload);
 
@@ -195,6 +250,7 @@ const known = {
   'dark city': { tmdbId: 1, title: 'Dark City', year: 1998 },
   'ghost in the shell': { tmdbId: 2, title: 'Ghost in the Shell', year: 1995 },
   'the matrix': { tmdbId: 603, title: 'The Matrix', year: 1999 },
+  'the matrix reloaded': { tmdbId: 604, title: 'The Matrix Reloaded', year: 2003 },
   equilibrium: { tmdbId: 3, title: 'Equilibrium', year: 2002 },
 };
 const verify = async (title) => known[title.toLowerCase()] ?? null;
@@ -217,6 +273,19 @@ test('verifyRecommendations drops the film itself and repeated films', async () 
   const out = await verifyRecommendations(recs, { verify, selfTmdbId: 603, max: 6 });
 
   assert.deepEqual(out, [{ title: 'Dark City', year: 1998, reason: 'first' }]);
+});
+
+test('verifyRecommendations drops other films in the same franchise', async () => {
+  const recs = [rec('The Matrix Reloaded', 'sequel'), rec('Dark City', 'fine')];
+
+  const out = await verifyRecommendations(recs, {
+    verify,
+    selfTmdbId: 603,
+    franchiseTmdbIds: [603, 604, 605],
+    max: 6,
+  });
+
+  assert.deepEqual(out.map((r) => r.title), ['Dark City']);
 });
 
 test('verifyRecommendations caps the list after dropping unverified films', async () => {
@@ -250,7 +319,7 @@ test('verifyRecommendations rejects when verification itself fails', async () =>
 
 // ── getInsights (real cache on a temp dir; OpenAI and TMDB stubbed at the network) ──
 
-const succeeds = () => [openAiRoute(() => ({ body: openAiResponse() })), tmdbSearchRoute];
+const succeeds = () => [openAiRoute(() => ({ body: openAiResponse() })), tmdbSearchRoute, collectionRoute];
 
 let stub;
 let cacheDir;
@@ -301,10 +370,56 @@ test('getInsights assembles verified insights, sources and metadata, and caches 
       },
       { title: 'The Matrix | Rotten Tomatoes', url: 'https://www.rottentomatoes.com/m/matrix' },
     ],
+    searches: 1,
     generatedAt: '2026-09-20T12:00:00.000Z',
     model: 'gpt-5.4-mini',
   });
   assert.deepEqual(cache.get(603), insights);
+});
+
+test('a sequel the model suggests is dropped, using the film’s TMDB collection', async () => {
+  // A live run put The Matrix Reloaded under "If you liked…" although the prompt forbids it.
+  const payload = structuredClone(MODEL_PAYLOAD);
+  payload.ifYouLiked = [
+    { title: 'The Matrix Reloaded', year: 2003, reason: 'The closest follow-up.' },
+    { title: 'Blade Runner', year: 1982, reason: 'Only suggested here.' },
+  ];
+  stub = stubFetch([openAiRoute(() => ({ body: openAiResponse({ payload }) })), tmdbSearchRoute, collectionRoute]);
+
+  const insights = await generate();
+
+  assert.deepEqual(insights.ifYouLiked.map((r) => r.title), ['Blade Runner']);
+});
+
+test('a standalone film skips the franchise lookup', async () => {
+  // No collection route is stubbed, so any call to /collection would throw and fail the test.
+  stub = stubFetch([openAiRoute(() => ({ body: openAiResponse() })), tmdbSearchRoute]);
+
+  const insights = await getInsights({ ...MATRIX_FACTS, collectionId: null }, { cache, now: () => NOW });
+
+  assert.equal(insights.premise, MODEL_PAYLOAD.premise);
+  assert.ok(!stub.calls.some((c) => c.url.pathname.startsWith('/3/collection/')));
+});
+
+test('a TMDB failure while looking up the franchise fails the request instead of caching sequel-polluted lists', async () => {
+  stub = stubFetch([
+    openAiRoute(() => ({ body: openAiResponse() })),
+    tmdbSearchRoute,
+    { match: (u) => u.pathname === '/3/collection/2344', respond: () => ({ status: 500, body: {} }) },
+  ]);
+
+  await assert.rejects(generate(), { code: 'UPSTREAM', message: /TMDB/ });
+  assert.equal(cache.get(603), null);
+});
+
+test('getInsights asks OpenAI to report the pages the search consulted', async () => {
+  stub = stubFetch(succeeds());
+
+  await generate();
+
+  const body = JSON.parse(openAiCalls()[0].init.body);
+  // Without this, sources are empty whenever the model does not cite inline.
+  assert.ok(body.include.includes('web_search_call.action.sources'));
 });
 
 test('a film suggested in both lists is shown only under More like this', async () => {
@@ -314,7 +429,7 @@ test('a film suggested in both lists is shown only under More like this', async 
     { title: 'Dark City', year: 1998, reason: 'Also suggested as a close match.' },
     { title: 'Blade Runner', year: 1982, reason: 'Only suggested here.' },
   ];
-  stub = stubFetch([openAiRoute(() => ({ body: openAiResponse({ payload }) })), tmdbSearchRoute]);
+  stub = stubFetch([openAiRoute(() => ({ body: openAiResponse({ payload }) })), tmdbSearchRoute, collectionRoute]);
 
   const insights = await generate();
 
@@ -404,6 +519,7 @@ test('a failed generation is not remembered, so the next request tries again', a
   stub = stubFetch([
     openAiRoute(() => (++attempts === 1 ? { status: 500, body: {} } : { body: openAiResponse() })),
     tmdbSearchRoute,
+    collectionRoute,
   ]);
 
   await assert.rejects(generate(), { code: 'UPSTREAM' });
@@ -445,6 +561,7 @@ test('getInsights gives up after the timeout and reports it', async () => {
 test('a TMDB failure while verifying recommendations fails the request instead of caching empty lists', async () => {
   stub = stubFetch([
     openAiRoute(() => ({ body: openAiResponse() })),
+    collectionRoute,
     { match: (u) => u.pathname === '/3/search/movie', respond: () => ({ status: 500, body: {} }) },
   ]);
 

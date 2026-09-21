@@ -2,6 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { stubFetch } from '../testing/http.js';
 import {
+  MATRIX_COLLECTION,
   MATRIX_OVERVIEW,
   findResult,
   matrixDetails,
@@ -11,7 +12,7 @@ import {
 
 // tmdb.js reads its key when first imported, so set it before importing.
 process.env.TMDB_API_KEY = 'test-tmdb-key';
-const { getMovieFacts, verifyFilm } = await import('./tmdb.js');
+const { getCollectionMemberIds, getMovieFacts, verifyFilm } = await import('./tmdb.js');
 
 let stub;
 afterEach(() => stub?.restore());
@@ -32,6 +33,7 @@ test('getMovieFacts resolves by IMDb id and maps TMDB details to the facts contr
   assert.deepEqual(facts, {
     tmdbId: 603,
     imdbId: 'tt0133093',
+    collectionId: 2344,
     title: 'The Matrix',
     year: 1999,
     tagline: 'Welcome to the Real World.',
@@ -188,6 +190,7 @@ test('getMovieFacts maps an obscure, sparsely filled record without inventing va
     genres: [],
     spoken_languages: [],
     production_countries: [],
+    belongs_to_collection: null,
     credits: { cast: [], crew: [] },
     release_dates: { results: [] },
   });
@@ -202,6 +205,7 @@ test('getMovieFacts maps an obscure, sparsely filled record without inventing va
   assert.deepEqual(facts, {
     tmdbId: 9009,
     imdbId: null,
+    collectionId: null,
     title: 'Obscure Short',
     year: null,
     tagline: null,
@@ -217,6 +221,20 @@ test('getMovieFacts maps an obscure, sparsely filled record without inventing va
     tmdbScore: null,
     tmdbVoteCount: 0,
   });
+});
+
+// ── getCollectionMemberIds ──────────────────────────────────────────────────
+
+test('getCollectionMemberIds lists every film in the franchise', async () => {
+  stub = stubFetch([route('/3/collection/2344', ok(MATRIX_COLLECTION))]);
+
+  assert.deepEqual(await getCollectionMemberIds(2344), [603, 604, 605, 624860]);
+});
+
+test('getCollectionMemberIds rejects when TMDB fails, so sequels are not silently let through', async () => {
+  stub = stubFetch([route('/3/collection/2344', () => ({ status: 500, body: {} }))]);
+
+  await assert.rejects(getCollectionMemberIds(2344), /TMDB/);
 });
 
 // ── verifyFilm ──────────────────────────────────────────────────────────────

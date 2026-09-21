@@ -7,7 +7,7 @@ import { stubFetch } from '../testing/http.js';
 import { startApp } from '../testing/app.js';
 import { findResult, matrixDetails, tmdbFind, tmdbSearch } from '../testing/tmdbFixtures.js';
 import { MODEL_PAYLOAD, OPENAI_URL, openAiResponse } from '../testing/openaiFixtures.js';
-import { ok, openAiRoute, route, tmdbSearchRoute } from '../testing/upstream.js';
+import { collectionRoute, ok, openAiRoute, route, tmdbSearchRoute } from '../testing/upstream.js';
 import { createCache } from '../details/cache.js';
 
 process.env.TMDB_API_KEY = 'test-tmdb-key';
@@ -118,7 +118,7 @@ test('GET /details/facts strips the "(1999)" the movie grid appends to titles be
 // ── insights ────────────────────────────────────────────────────────────────
 
 test('GET /details/insights returns insights, serves repeats from the cache, and regenerates on refresh=1', async () => {
-  stub = stubFetch([...movieRoutes(4), openAiRoute(ok(openAiResponse())), tmdbSearchRoute]);
+  stub = stubFetch([...movieRoutes(4), openAiRoute(ok(openAiResponse())), tmdbSearchRoute, collectionRoute]);
   const url = `/api/details/insights?${identity(4)}`;
 
   const first = await app.get(url);

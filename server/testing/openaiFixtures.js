@@ -9,6 +9,7 @@ export const OPENAI_URL = 'https://api.openai.com/v1/responses';
 export const MATRIX_FACTS = {
   tmdbId: 603,
   imdbId: 'tt0133093',
+  collectionId: 2344,
   title: 'The Matrix',
   year: 1999,
   tagline: 'Welcome to the Real World.',
@@ -45,8 +46,8 @@ export const MODEL_PAYLOAD = {
     praised: ['Groundbreaking action and effects', 'Ambitious, idea-driven story', 'Iconic production design'],
     criticized: ['Some stiff dialogue', 'Heavy exposition in places'],
     scores: [
-      { source: 'Rotten Tomatoes', value: '83%' },
-      { source: 'Metacritic', value: '73/100' },
+      { source: 'Rotten Tomatoes', kind: 'critics', value: '83%' },
+      { source: 'Metacritic', kind: 'critics', value: '73/100' },
     ],
   },
   moreLikeThis: [
@@ -91,6 +92,8 @@ export const CITATIONS = [
 /**
  * A full Responses API object. `content` replaces the message content (for refusals or
  * non-JSON text); `status`/`incompleteReason` model a response that did not finish.
+ * `searchCalls` is how many web searches ran, and `consulted` the URLs the first one reports
+ * in action.sources (present when the request asks for web_search_call.action.sources).
  */
 export function openAiResponse({
   payload = MODEL_PAYLOAD,
@@ -98,7 +101,19 @@ export function openAiResponse({
   status = 'completed',
   incompleteReason = null,
   content = null,
+  searchCalls = 1,
+  consulted = [],
 } = {}) {
+  const searches = Array.from({ length: searchCalls }, (_, i) => ({
+    id: `ws_0a1b2c3${i}`,
+    type: 'web_search_call',
+    status: 'completed',
+    action: {
+      type: 'search',
+      query: 'The Matrix 1999 reviews critics audience',
+      sources: i === 0 ? consulted.map((url) => ({ type: 'url', url })) : [],
+    },
+  }));
   return {
     id: 'resp_0a1b2c3d4e5f60718293',
     object: 'response',
@@ -113,12 +128,7 @@ export function openAiResponse({
     model: 'gpt-5.4-mini-2026-03-17',
     output: [
       { id: 'rs_0a1b2c3d', type: 'reasoning', summary: [] },
-      {
-        id: 'ws_0a1b2c3d',
-        type: 'web_search_call',
-        status: 'completed',
-        action: { type: 'search', query: 'The Matrix 1999 reviews critics audience' },
-      },
+      ...searches,
       {
         id: 'msg_0a1b2c3d',
         type: 'message',

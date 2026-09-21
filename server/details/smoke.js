@@ -32,10 +32,12 @@ try {
   console.log(JSON.stringify(insights, null, 2));
   console.log(
     `\nSummary: ${insights.moreLikeThis.length} more-like-this, ${insights.ifYouLiked.length} if-you-liked, ` +
-      `${insights.reviews.scores.length} scores, ${insights.sources.length} sources`
+      `${insights.reviews.scores.length} scores, ${insights.sources.length} sources, ${insights.searches} web searches`
   );
-  if (insights.sources.length === 0) {
-    console.warn('WARNING: no citations came back, so web search may not have run.');
+  if (insights.searches === 0) {
+    console.warn('WARNING: no web search ran, so reviews and scores come from the model’s memory.');
+  } else if (insights.sources.length === 0) {
+    console.warn(`Note: ${insights.searches} web search(es) ran but no sources were returned.`);
   }
 } catch (err) {
   if (!(err instanceof InsightsError)) throw err;

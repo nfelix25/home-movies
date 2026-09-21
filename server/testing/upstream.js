@@ -1,7 +1,7 @@
 // Test-only route builders for stubFetch: the OpenAI endpoint and TMDB's title search.
 
 import { OPENAI_URL } from './openaiFixtures.js';
-import { findResult, tmdbSearch } from './tmdbFixtures.js';
+import { MATRIX_COLLECTION, findResult, tmdbSearch } from './tmdbFixtures.js';
 
 export const route = (pathname, respond) => ({ match: (u) => u.pathname === pathname, respond });
 export const ok = (body) => () => ({ body });
@@ -19,7 +19,11 @@ const SEARCH = {
   'The Matrix': [findResult({ id: 603, title: 'The Matrix', release_date: '1999-03-30' })],
   'Blade Runner': [findResult({ id: 78, title: 'Blade Runner', release_date: '1982-06-25' })],
   Akira: [findResult({ id: 149, title: 'Akira', release_date: '1988-07-16' })],
+  'The Matrix Reloaded': [findResult({ id: 604, title: 'The Matrix Reloaded', release_date: '2003-05-15' })],
 };
+
+/** The Matrix's franchise, used to keep its own sequels out of the recommendations. */
+export const collectionRoute = route('/3/collection/2344', ok(MATRIX_COLLECTION));
 
 export const tmdbSearchRoute = {
   match: (u) => u.pathname === '/3/search/movie',

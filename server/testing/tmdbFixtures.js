@@ -137,3 +137,18 @@ export function matrixDetails(overrides = {}) {
     ...overrides,
   };
 }
+
+/** Response of GET /collection/{id}: every film in the franchise, including the one asked about. */
+export const MATRIX_COLLECTION = {
+  id: 2344,
+  name: 'The Matrix Collection',
+  overview: 'A cyberpunk action series.',
+  poster_path: '/lh4aGpd3U9rm9B8Oqr6CUgQLtZL.jpg',
+  backdrop_path: '/bRm2DEgUiYciDw3myHuYFInD7la.jpg',
+  parts: [
+    findResult({ id: 603, title: 'The Matrix', release_date: '1999-03-30' }),
+    findResult({ id: 604, title: 'The Matrix Reloaded', release_date: '2003-05-15' }),
+    findResult({ id: 605, title: 'The Matrix Revolutions', release_date: '2003-11-05' }),
+    findResult({ id: 624860, title: 'The Matrix Resurrections', release_date: '2021-12-16' }),
+  ],
+};

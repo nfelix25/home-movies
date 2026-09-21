@@ -32,11 +32,14 @@ export type Insights = {
     audience: string;
     praised: string[];
     criticized: string[];
-    scores: { source: string; value: string }[];
+    /** `kind` is absent on results cached before it was recorded. */
+    scores: { source: string; kind?: 'critics' | 'audience'; value: string }[];
   };
   moreLikeThis: Recommendation[];
   ifYouLiked: Recommendation[];
   sources: { title?: string; url: string }[];
+  /** How many web searches ran. Absent on results cached before this was recorded. */
+  searches?: number;
   generatedAt: string;
   model: string;
 };
@@ -125,6 +128,17 @@ export function formatGenerated(isoTimestamp: string): string {
 export function hostOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+/** A readable name for a source with no title: host plus path, so several pages of one site differ. */
+export function labelOf(url: string): string {
+  try {
+    const { hostname, pathname } = new URL(url);
+    const label = hostname.replace(/^www\./, '') + pathname.replace(/\/+$/, '');
+    return label.length > 60 ? `${label.slice(0, 57)}…` : label;
   } catch {
     return url;
   }
